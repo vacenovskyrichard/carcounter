@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% block content %}
+
+    <style>
+        p, h1, h2, h3, h4, h5 {
+            text-align: center;
+            color: white;
+        }
+
+        .center {
+            margin-left: auto;
+            margin-right: auto;
+            display: block
+        }
+    </style>
+
+
+    <!--============================================== BODY ======================================================-->
+
+
+
+    <body>
+
+    <h1 >Demo video</h1>
+    <video class = "center" width="800" height="500" controls>
+        <source src={{ url_for('static', filename="output.mp4") }} type="video/mp4">
+        Your browser does not support the video tag.
+    </video>
+
+    </body>
+
+{% endblock content %}

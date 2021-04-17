@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% block content %}
+
+
+    <style>
+        h1 {
+            text-align: center;
+            color: white;
+        }
+
+        p, h2 {
+            /*text-align: center;*/
+            color: white;
+            padding-right: 400px;
+
+        }
+
+        body {
+        }
+
+    </style>
+
+
+    <title>Homepage</title>
+
+    <!--============================================== BODY ======================================================-->
+
+    <body>
+
+    <h1>Upload new File</h1>
+    <form method=post enctype=multipart/form-data>
+      <input type=file name=file>
+      <input type=submit value=Upload>
+    </form>
+
+
+    <a href="{{ url_for('detector') }}">run detector</a>
+    </body>
+
+{% endblock content %}
