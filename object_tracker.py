@@ -40,7 +40,7 @@ config.gpu_options.allow_growth = True
 session = InteractiveSession(config=config)
 input_size = 416
 
-video_path = 'data/video/vertical2.mp4'
+video_path = 'data/vertical_highway_30s.mp4'
 
 # load tflite model if flag is set
 
@@ -90,9 +90,9 @@ while True:
         print('Video has ended or failed, try a different video format!')
         break
 
-    # if frame_num % 4 != 0:
-    #     frame_num += 1
-    #     continue
+    #if frame_num % 4 != 0:
+    #    frame_num += 1
+    #    continue
 
     frame_num += 1
 
@@ -103,7 +103,7 @@ while True:
     image_data = image_data[np.newaxis, ...].astype(np.float32)
     start_time = time.time()
 
-    # run detections on tflite if flag is set
+    # run detections
     batch_data = tf.constant(image_data)
     pred_bbox = infer(batch_data)
     for key, value in pred_bbox.items():
@@ -142,8 +142,6 @@ while True:
     # by default allow all classes in .names file
     allowed_classes = list(class_names.values())
 
-    # custom allowed classes (uncomment line below to customize tracker for only people)
-    # allowed_classes = ['person']
 
     # loop through objects and use class index to get class name, allow only classes in allowed_classes list
     names = []
@@ -157,10 +155,6 @@ while True:
             names.append(class_name)
     names = np.array(names)
     count = len(names)
-
-    # delete detections that are not in allowed_classes
-    bboxes = np.delete(bboxes, deleted_indx, axis=0)
-    scores = np.delete(scores, deleted_indx, axis=0)
 
     # encode yolo detections and feed to tracker
     features = encoder(frame, bboxes)
@@ -192,12 +186,7 @@ while True:
         # draw bbox on screen
         color = colors[int(track.track_id) % len(colors)]
         color = [i * 255 for i in color]
-        #
-        # print(bbox[0])
-        # print(bbox[1])
-        # print(bbox[2])
-        # print(bbox[3])
-        # print('===============================================')
+
         cv2.rectangle(frame, (int(bbox[0]), int(bbox[1])), (int(bbox[2]), int(bbox[3])), color, 2)
         cv2.rectangle(frame, (int(bbox[0]), int(bbox[1] - 30)),
                       (int(bbox[0]) + (len(class_name) + len(str(track.track_id))) * 17, int(bbox[1])), color,

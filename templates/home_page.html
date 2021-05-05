@@ -2,39 +2,48 @@
 {% block content %}
 
 
-    <style>
-        h1 {
-            text-align: center;
-            color: white;
-        }
+<style>
+    h1, h2, p {
+        text-align: center;
+    }
 
-        p, h2 {
-            /*text-align: center;*/
-            color: white;
-            padding-right: 400px;
+    form {
+        margin: 0 auto;
+        width: 250px;
+    }
 
-        }
+    a {
+        color: white;
+        text-align: center;
 
-        body {
-        }
+    }
 
-    </style>
+    body {
+    }
 
-
-    <title>Homepage</title>
-
-    <!--============================================== BODY ======================================================-->
-
-    <body>
-
-    <h1>Upload new File</h1>
-    <form method=post enctype=multipart/form-data>
-      <input type=file name=file>
-      <input type=submit value=Upload>
-    </form>
+</style>
 
 
-    <a href="{{ url_for('detector') }}">run detector</a>
-    </body>
+<title>Homepage</title>
+
+<!--============================================== BODY ======================================================-->
+
+<body>
+
+<h1>Upload video to process</h1>
+<form method=post enctype=multipart/form-data>
+    <input type=file name=file>
+    <input type=submit value=Upload>
+</form>
+
+{%if uploaded%}
+<p>File succesfuly uploaded</p>
+{%endif%}
+
+<div style="text-align: center">
+    <a href="{{ url_for('detector_vertical') }}">run detector - vertical</a>
+    <a href="{{ url_for('detector_horizontal') }}">run detector - horizontal</a>
+</div>
+</body>
 
 {% endblock content %}
