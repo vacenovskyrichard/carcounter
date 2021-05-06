@@ -5,6 +5,7 @@ from werkzeug.utils import secure_filename
 from flask import Flask, session
 import sqlite3
 import os
+
 # comment out below line to enable tensorflow logging outputs
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import time
@@ -24,7 +25,6 @@ from deep_sort import preprocessing, nn_matching
 from deep_sort.detection import Detection
 from deep_sort.tracker import Tracker
 from tools import generate_detections as gdet
-
 
 UPLOAD_FOLDER = '/home/vacenric/carcounter/uploads'
 app = Flask(__name__, static_folder='static', template_folder='templates')
@@ -82,8 +82,6 @@ def detector_horizontal():
 
 @app.route('/result')
 def detector():
-    render_template('result.html')
-
     # Definition of the parameters
     max_cosine_distance = 0.4
     nn_budget = None
@@ -142,7 +140,10 @@ def detector():
     print("fps: " + str(fps))
 
     number_of_vehicles = 0
-    counter = []
+    bus_counter = []
+    car_counter = []
+    truck_counter = []
+    sum_counter = []
     while True:
         return_value, frame = vid.read()
         if return_value:
@@ -264,20 +265,37 @@ def detector():
                 cv2.line(frame, (0, int(3 * height / 6)), (width, int(3 * height / 6)), (0, 255, 0), thickness=2)
                 center_y = int(((bbox[1]) + (bbox[3])) / 2)
                 if center_y <= int(3 * height / 6 + height / 30) and center_y >= int(3 * height / 6 - height / 30):
-                    if class_name == 'car' or class_name == 'truck':
-                        counter.append(int(track.track_id))
+                    if class_name == 'car':
+                        car_counter.append(int(track.track_id))
+                        sum_counter.append(int(track.track_id))
+                    elif class_name == 'truck':
+                        truck_counter.append(int(track.track_id))
+                        sum_counter.append(int(track.track_id))
+                    elif class_name == 'bus':
+                        bus_counter.append(int(track.track_id))
+                        sum_counter.append(int(track.track_id))
 
             # Horizontal
             else:
                 cv2.line(frame, (int(3 * width / 6), 0), (int(3 * width / 6), height), (0, 255, 0), thickness=2)
                 center_x = int(((bbox[0]) + (bbox[2])) / 2)
                 if center_x <= int(3 * width / 6 + width / 30) and center_x >= int(3 * width / 6 - width / 30):
-                    if class_name == 'car' or class_name == 'truck':
-                        counter.append(int(track.track_id))
+                    if class_name == 'car':
+                        car_counter.append(int(track.track_id))
+                        sum_counter.append(int(track.track_id))
+                    elif class_name == 'truck':
+                        truck_counter.append(int(track.track_id))
+                        sum_counter.append(int(track.track_id))
+                    elif class_name == 'bus':
+                        bus_counter.append(int(track.track_id))
+                        sum_counter.append(int(track.track_id))
 
-        total_count = len(set(counter))
+        car_count = len(set(car_counter))
+        truck_count = len(set(truck_counter))
+        bus_count = len(set(bus_counter))
+
+        total_count = len(set(sum_counter))
         print(total_count)
-        number_of_vehicles = total_count
 
         cv2.putText(frame, "Total Vehicle Count: " + str(total_count), (0, 130), 0, 1, (0, 0, 255), 2)
 
@@ -297,12 +315,13 @@ def detector():
     name_db = session['filename']
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
-    cursor.execute("INSERT INTO vehicles VALUES (?, ?)", (name_db, number_of_vehicles))
+    cursor.execute("INSERT INTO vehicles VALUES (?, ?, ?, ?)",
+                   (name_db, car_count, bus_count, truck_count, total_count))
     conn.commit()
     conn.close()
 
     # return render_template('result.html', result=number_of_vehicles)
-    return render_template('result.html', result=number_of_vehicles)
+    return render_template('result.html', car=car_count, bus=bus_count, truck=truck_count, total=total_count)
 
 
 if __name__ == "__main__":
