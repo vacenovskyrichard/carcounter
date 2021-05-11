@@ -1,8 +1,15 @@
+import os.path
+from flask import Flask, flash, request, redirect, url_for, render_template
+from flask import Flask, session
+from werkzeug.utils import secure_filename
+from flask import Flask, session
+import sqlite3
 import os
 
 # comment out below line to enable tensorflow logging outputs
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import time
+import math
 import tensorflow as tf
 import core.utils as utils
 from core.yolov4 import filter_boxes
@@ -20,12 +27,11 @@ from deep_sort.detection import Detection
 from deep_sort.tracker import Tracker
 from tools import generate_detections as gdet
 
-import subprocess
+
 # Definition of the parameters
 max_cosine_distance = 0.4
 nn_budget = None
 nms_max_overlap = 1.0
-
 # initialize deep sort
 model_filename = 'model_data/mars-small128.pb'
 encoder = gdet.create_box_encoder(model_filename, batch_size=1)
@@ -37,16 +43,18 @@ tracker = Tracker(metric)
 # load configuration for object detector
 config = ConfigProto()
 config.gpu_options.allow_growth = True
-session = InteractiveSession(config=config)
 input_size = 416
 
-video_path = 'data/vertical_highway_30s.mp4'
+# video_path = 'data/video/vertical.mp4'
+video_path = 'data/vertical_highway_30s_4.mp4'
+
+# print(video_path)
 
 # load tflite model if flag is set
 
-#TINY
+# TINY
 # saved_model_loaded = tf.saved_model.load('./checkpoints/yolov4-tiny-416', tags=[tag_constants.SERVING])
-#NORMAL
+# NORMAL
 saved_model_loaded = tf.saved_model.load('./checkpoints/yolov4-416', tags=[tag_constants.SERVING])
 
 infer = saved_model_loaded.signatures['serving_default']
@@ -71,17 +79,21 @@ if './outputs/output.avi':
 frame_num = 0
 # while video is running
 
-
 data = cv2.VideoCapture(video_path)
 
 fps = int(data.get(cv2.CAP_PROP_FPS))
 
 print("fps: " + str(fps))
 
+bus_counter = []
+car_counter = []
+truck_counter = []
+sum_counter = []
 
-number_of_vehicles = 0
-counter = []
+myDict = {}
 while True:
+    cur_minute = math.floor(frame_num / (60 * fps)) + 1
+
     return_value, frame = vid.read()
     if return_value:
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -90,13 +102,14 @@ while True:
         print('Video has ended or failed, try a different video format!')
         break
 
-    #if frame_num % 4 != 0:
-    #    frame_num += 1
-    #    continue
+    if frame_num % 4 != 0:
+        frame_num += 1
+        continue
 
     frame_num += 1
 
-    print('Frame #: ', frame_num)
+    # print('Frame #: ', frame_num)
+    # print('Minute : ', cur_minute)
     frame_size = frame.shape[:2]
     image_data = cv2.resize(frame, (input_size, input_size))
     image_data = image_data / 255.
@@ -141,7 +154,6 @@ while True:
 
     # by default allow all classes in .names file
     allowed_classes = list(class_names.values())
-
 
     # loop through objects and use class index to get class name, allow only classes in allowed_classes list
     names = []
@@ -202,25 +214,39 @@ while True:
         cv2.line(frame, (0, int(3 * height / 6)), (width, int(3 * height / 6)), (0, 255, 0), thickness=2)
         center_y = int(((bbox[1]) + (bbox[3])) / 2)
         if center_y <= int(3 * height / 6 + height / 30) and center_y >= int(3 * height / 6 - height / 30):
-            if class_name == 'car' or class_name == 'truck':
-                counter.append(int(track.track_id))
+            if class_name == 'car':
+                car_counter.append(int(track.track_id))
+                sum_counter.append(int(track.track_id))
+                if cur_minute not in myDict:
+                    myDict[cur_minute] = []
+                myDict[cur_minute].append(track.track_id)
 
-        # Horizontal
-        # cv2.line(frame, (int(3*width/6), 0), (int(3*width/6),height), (0, 255, 0), thickness=2)
-        # center_x = int(((bbox[0]) + (bbox[2])) / 2)
-        # if center_x <= int(3 * width / 6 + width / 30) and center_x >= int(3 * width / 6 - width / 30):
-        #     if class_name == 'car' or class_name == 'truck':
-        #         counter.append(int(track.track_id))
+            elif class_name == 'truck':
+                truck_counter.append(int(track.track_id))
+                sum_counter.append(int(track.track_id))
+                if cur_minute not in myDict:
+                    myDict[cur_minute] = []
+                myDict[cur_minute].append(track.track_id)
+            elif class_name == 'bus':
+                bus_counter.append(int(track.track_id))
+                sum_counter.append(int(track.track_id))
+                if cur_minute not in myDict:
+                    myDict[cur_minute] = []
+                myDict[cur_minute].append(track.track_id)
 
-    total_count = len(set(counter))
+
+    car_count = len(set(car_counter))
+    truck_count = len(set(truck_counter))
+    bus_count = len(set(bus_counter))
+
+    total_count = len(set(sum_counter))
     print(total_count)
-    number_of_vehicles = total_count
 
     cv2.putText(frame, "Total Vehicle Count: " + str(total_count), (0, 130), 0, 1, (0, 0, 255), 2)
 
     # calculate frames per second of running detections
-    fps = 1.0 / (time.time() - start_time)
-    print("FPS: %.2f" % fps)
+    fps_running = 1.0 / (time.time() - start_time)
+    print("FPS: %.2f" % fps_running)
     result = np.asarray(frame)
     result = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
 
@@ -228,3 +254,19 @@ while True:
         out.write(result)
     if cv2.waitKey(1) & 0xFF == ord('q'): break
 cv2.destroyAllWindows()
+
+# ========================================================================================
+
+
+# return render_template('result.html', result=number_of_vehicles)
+
+first_sum = len(set(myDict[1]))
+second_sum = 0
+third_sum = 0
+fourth_sum = 0
+if 2 in myDict:
+    second_sum = len(set(myDict[2]))
+if 3 in myDict:
+    third_sum = len(set(myDict[3]))
+if 4 in myDict:
+    fourth_sum = len(set(myDict[4]))

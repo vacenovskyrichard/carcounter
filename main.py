@@ -9,6 +9,7 @@ import os
 # comment out below line to enable tensorflow logging outputs
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import time
+import math
 import tensorflow as tf
 import core.utils as utils
 from core.yolov4 import filter_boxes
@@ -26,7 +27,7 @@ from deep_sort.detection import Detection
 from deep_sort.tracker import Tracker
 from tools import generate_detections as gdet
 
-UPLOAD_FOLDER = '/home/vacenric/carcounter/uploads'
+UPLOAD_FOLDER = '/home/vacenric/bakalarka/carcounter/uploads'
 app = Flask(__name__, static_folder='static', template_folder='templates')
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
@@ -68,16 +69,9 @@ def info():
     return render_template('info.html')
 
 
-@app.route('/result_vertical')
-def detector_vertical():
-    session['vertical'] = True
-    return redirect(url_for('detector'))
-
-
-@app.route('/result_horizontal')
-def detector_horizontal():
-    session['vertical'] = False
-    return redirect(url_for('detector'))
+@app.route('/processing')
+def processing():
+    return render_template('info.html')
 
 
 @app.route('/result')
@@ -107,9 +101,9 @@ def detector():
     # load tflite model if flag is set
 
     # TINY
-    # saved_model_loaded = tf.saved_model.load('./checkpoints/yolov4-tiny-416', tags=[tag_constants.SERVING])
+    saved_model_loaded = tf.saved_model.load('./checkpoints/yolov4-tiny-416', tags=[tag_constants.SERVING])
     # NORMAL
-    saved_model_loaded = tf.saved_model.load('./checkpoints/yolov4-416', tags=[tag_constants.SERVING])
+    # saved_model_loaded = tf.saved_model.load('./checkpoints/yolov4-416', tags=[tag_constants.SERVING])
 
     infer = saved_model_loaded.signatures['serving_default']
 
@@ -139,12 +133,15 @@ def detector():
 
     print("fps: " + str(fps))
 
-    number_of_vehicles = 0
     bus_counter = []
     car_counter = []
     truck_counter = []
     sum_counter = []
+
+    myDict = {}
     while True:
+        cur_minute = math.floor(frame_num / (60 * fps)) + 1
+
         return_value, frame = vid.read()
         if return_value:
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -153,13 +150,15 @@ def detector():
             print('Video has ended or failed, try a different video format!')
             break
 
-        if frame_num % 4 != 0:
-            frame_num += 1
-            continue
+        if fps >= 25:
+            if frame_num % 3 != 0:
+                frame_num += 1
+                continue
 
         frame_num += 1
 
         print('Frame #: ', frame_num)
+        print('Minute : ', cur_minute)
         frame_size = frame.shape[:2]
         image_data = cv2.resize(frame, (input_size, input_size))
         image_data = image_data / 255.
@@ -261,34 +260,53 @@ def detector():
             height, width, _ = frame.shape
 
             # Veritical
-            if session['vertical']:
-                cv2.line(frame, (0, int(3 * height / 6)), (width, int(3 * height / 6)), (0, 255, 0), thickness=2)
-                center_y = int(((bbox[1]) + (bbox[3])) / 2)
-                if center_y <= int(3 * height / 6 + height / 30) and center_y >= int(3 * height / 6 - height / 30):
-                    if class_name == 'car':
-                        car_counter.append(int(track.track_id))
-                        sum_counter.append(int(track.track_id))
-                    elif class_name == 'truck':
-                        truck_counter.append(int(track.track_id))
-                        sum_counter.append(int(track.track_id))
-                    elif class_name == 'bus':
-                        bus_counter.append(int(track.track_id))
-                        sum_counter.append(int(track.track_id))
+
+            cv2.line(frame, (0, int(3 * height / 6)), (width, int(3 * height / 6)), (0, 255, 0), thickness=2)
+            center_y = int(((bbox[1]) + (bbox[3])) / 2)
+            if center_y <= int(3 * height / 6 + height / 30) and center_y >= int(3 * height / 6 - height / 30):
+                if class_name == 'car':
+                    car_counter.append(int(track.track_id))
+                    sum_counter.append(int(track.track_id))
+                    if cur_minute not in myDict:
+                        myDict[cur_minute] = []
+                    myDict[cur_minute].append(track.track_id)
+
+                elif class_name == 'truck':
+                    truck_counter.append(int(track.track_id))
+                    sum_counter.append(int(track.track_id))
+                    if cur_minute not in myDict:
+                        myDict[cur_minute] = []
+                    myDict[cur_minute].append(track.track_id)
+                elif class_name == 'bus':
+                    bus_counter.append(int(track.track_id))
+                    sum_counter.append(int(track.track_id))
+                    if cur_minute not in myDict:
+                        myDict[cur_minute] = []
+                    myDict[cur_minute].append(track.track_id)
 
             # Horizontal
-            else:
-                cv2.line(frame, (int(3 * width / 6), 0), (int(3 * width / 6), height), (0, 255, 0), thickness=2)
-                center_x = int(((bbox[0]) + (bbox[2])) / 2)
-                if center_x <= int(3 * width / 6 + width / 30) and center_x >= int(3 * width / 6 - width / 30):
-                    if class_name == 'car':
-                        car_counter.append(int(track.track_id))
-                        sum_counter.append(int(track.track_id))
-                    elif class_name == 'truck':
-                        truck_counter.append(int(track.track_id))
-                        sum_counter.append(int(track.track_id))
-                    elif class_name == 'bus':
-                        bus_counter.append(int(track.track_id))
-                        sum_counter.append(int(track.track_id))
+
+            cv2.line(frame, (int(3 * width / 6), 0), (int(3 * width / 6), height), (0, 255, 0), thickness=2)
+            center_x = int(((bbox[0]) + (bbox[2])) / 2)
+            if center_x <= int(3 * width / 6 + width / 30) and center_x >= int(3 * width / 6 - width / 30):
+                if class_name == 'car':
+                    car_counter.append(int(track.track_id))
+                    sum_counter.append(int(track.track_id))
+                    if cur_minute not in myDict:
+                        myDict[cur_minute] = []
+                    myDict[cur_minute].append(track.track_id)
+                elif class_name == 'truck':
+                    truck_counter.append(int(track.track_id))
+                    sum_counter.append(int(track.track_id))
+                    if cur_minute not in myDict:
+                        myDict[cur_minute] = []
+                    myDict[cur_minute].append(track.track_id)
+                elif class_name == 'bus':
+                    bus_counter.append(int(track.track_id))
+                    sum_counter.append(int(track.track_id))
+                    if cur_minute not in myDict:
+                        myDict[cur_minute] = []
+                    myDict[cur_minute].append(track.track_id)
 
         car_count = len(set(car_counter))
         truck_count = len(set(truck_counter))
@@ -300,8 +318,8 @@ def detector():
         cv2.putText(frame, "Total Vehicle Count: " + str(total_count), (0, 130), 0, 1, (0, 0, 255), 2)
 
         # calculate frames per second of running detections
-        fps = 1.0 / (time.time() - start_time)
-        print("FPS: %.2f" % fps)
+        fps_running = 1.0 / (time.time() - start_time)
+        # print("FPS: %.2f" % fps_running)
         result = np.asarray(frame)
         result = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
 
@@ -313,15 +331,35 @@ def detector():
     # ========================================================================================
 
     name_db = session['filename']
+
+    # return render_template('result.html', result=number_of_vehicles)
+
+    first_sum = len(set(myDict[1]))
+    second_sum = 0
+    third_sum = 0
+    fourth_sum = 0
+    fifth_sum = 0
+
+    if 2 in myDict:
+        second_sum = len(set(myDict[2]))
+    if 3 in myDict:
+        third_sum = len(set(myDict[3]))
+    if 4 in myDict:
+        fourth_sum = len(set(myDict[4]))
+    if 5 in myDict:
+        fifth_sum = len(set(myDict[4]))
+
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
-    cursor.execute("INSERT INTO vehicles VALUES (?, ?, ?, ?)",
-                   (name_db, car_count, bus_count, truck_count, total_count))
+    cursor.execute("INSERT INTO vehicles VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                   (name_db, car_count, bus_count, truck_count, first_sum, second_sum, third_sum, fourth_sum, fifth_sum,
+                    total_count))
     conn.commit()
     conn.close()
 
-    # return render_template('result.html', result=number_of_vehicles)
-    return render_template('result.html', car=car_count, bus=bus_count, truck=truck_count, total=total_count)
+    return render_template('result.html', car=car_count, bus=bus_count, truck=truck_count, total=total_count,
+                           first=first_sum, second=second_sum, third=third_sum, fourth=fourth_sum, fifth=fifth_sum,
+                           length=cur_minute)
 
 
 if __name__ == "__main__":

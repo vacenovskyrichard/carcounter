@@ -2,48 +2,63 @@
 {% block content %}
 
 
-<style>
-    h1, h2, p {
-        text-align: center;
-    }
+    <style>
+        h1, h2, p {
+            text-align: center;
+        }
 
-    form {
-        margin: 0 auto;
-        width: 250px;
-    }
+        form {
+            margin: 0 auto;
+            width: 250px;
+        }
 
-    a {
-        color: white;
-        text-align: center;
+        a {
+            color: white;
+            text-align: center;
 
-    }
+        }
 
-    body {
-    }
-
-</style>
+        body {
+        }
 
 
-<title>Homepage</title>
+        div#loading {
+            width: 35px;
+            height: 35px;
+            display: none;
+            background: url(/static/ajax-loader.gif) no-repeat;
+            cursor: wait;
+        }
 
-<!--============================================== BODY ======================================================-->
+    </style>
 
-<body>
 
-<h1>Upload video to process</h1>
-<form method=post enctype=multipart/form-data>
-    <input type=file name=file>
-    <input type=submit value=Upload>
-</form>
+    <title>Homepage</title>
 
-{%if uploaded%}
-<p>File succesfuly uploaded</p>
-{%endif%}
+    <!--============================================== BODY ======================================================-->
 
-<div style="text-align: center">
-    <a href="{{ url_for('detector_vertical') }}">run detector - vertical</a>
-    <a href="{{ url_for('detector_horizontal') }}">run detector - horizontal</a>
-</div>
-</body>
+
+
+
+
+        <h1>Upload video to process</h1>
+        <form method=post enctype=multipart/form-data>
+            <input type=file name=file>
+            <input type=submit value=Upload>
+        </form>
+
+        {% if uploaded %}
+            <p style="color:green;">File succesfuly uploaded</p>
+            <div style="text-align: center">
+                <p>Running a detector takes circa time equal to length </p>
+                <p>of your video. It can be slightly faster or slower based</p>
+                <p>on your hardware.</p>
+                <a href="{{ url_for('detector') }}"><h1>run detector</h1></a>
+            </div>
+
+        {% endif %}
+
+
+
 
 {% endblock content %}

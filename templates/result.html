@@ -18,7 +18,27 @@
     <h2>Number of cars: {{ car }}</h2>
     <h2>Number of trucks: {{ truck }}</h2>
     <h2>Number of buses: {{ bus }}</h2>
+    <h2>First minute total: {{ first }}</h2>
+
+    {% if length > 1 %}
+        <h2>Second minute total: {{ second }}</h2>
+    {% endif %}
+
+    {% if length > 2 %}
+        <h2>Third minute total: {{ third }}</h2>
+    {% endif %}
+
+    {% if length > 3 %}
+        <h2>Fourth minute total: {{ fourth }}</h2>
+    {% endif %}
+
+    {% if length > 4 %}
+        <h2>Fifth minute total: {{ fifth }}</h2>
+    {% endif %}
+    <h2>-------------------------------</h2>
+
     <h2>Total: {{ total }}</h2>
+
 
     </body>
 
