@@ -27,7 +27,7 @@ from deep_sort.detection import Detection
 from deep_sort.tracker import Tracker
 from tools import generate_detections as gdet
 
-UPLOAD_FOLDER = '/home/vacenric/bakalarka/carcounter/uploads'
+UPLOAD_FOLDER = './uploads'
 app = Flask(__name__, static_folder='static', template_folder='templates')
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
